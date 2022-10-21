@@ -20,7 +20,8 @@ class Movie:
     def __init__(self, tt_id, title, rating):
         self.tt_id = tt_id
         self.title = ' '.join([str(item) for item in title])
-        self.rating = float(' '.join([str(item) for item in rating]))
+        self.rating = rating
+        #float(' '.join([str(item) for item in rating]))
 
     def __str__(self):
         #return f"Id: {self.tt_id}  Titlee: {self.title}   Rating: {self.rating}"
@@ -73,12 +74,20 @@ class Graph:
         self._addEdges()
 
     #Leser film-fil
-    def read_movie_file(self, filename):
+    def read_movie_file1(self, filename):
         for lines in open(filename):
             lines = lines.strip()
             data = lines.split()
             data_lenght = len(data)
             tt_id = data[0]
+
+            for i in range(data_lenght):
+                if data[i].isdigit():
+                    pass
+                    #print(data[i])
+                elif "." in data[i] and data[i][0].isdigit() and len(data[i]) == 3:
+                    print(data[i])
+                 
 
             for i in range(data_lenght):
                 title = []
@@ -87,18 +96,38 @@ class Graph:
                 for j in name_list:
                     if j[0].isdigit() == False:
                         title.append(j)
-                    elif j[0].isdigit() and len(j) < 4:
-                        rating.append(j)
+                    elif j[0].isdigit() and len(j) == 3:
+                        if "." in j:
+                            rating.append(j)
+                        
                 
             movie = Movie(tt_id, title, rating)
             if movie not in self.movie_dict:
                 self.movie_dict[tt_id] = movie
+
+    def read_movie_file(self, filename):
+        lines = []
+        with open(filename) as f:
+            for line in f:
+                l = line.split('\t')
+                lines.append(l)
+
+        for data in lines:
+            print(data)
                    
                     
     #Skriver ut grafen
     def printGraph(self):
         for keys, values in self.graph.items():
             print(keys, " <------> ", values)
+
+    #Hjelpe-metode
+    def isfloat(self, num):
+        try:
+            float(num)
+            return True
+        except ValueError:
+            return False
 
     def print_numbers(self):
         print("Number of nodes: " + str(len(self.actor_node_list)))
@@ -108,14 +137,10 @@ class Graph:
 def main():
     g = Graph()
 
-    g.read_movie_file("movies.tsv")
-    g.read_actor_file("actors.tsv")
-    g.print_numbers()
+    g.read_movie_file("marvel_movies.tsv")
+    #g.read_actor_file("marvel_actors.tsv")
+    #g.printGraph()
+    #g.print_numbers()
   
 
 main()
-    
-    
-
-
-
