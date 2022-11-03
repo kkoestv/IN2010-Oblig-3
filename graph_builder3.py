@@ -9,28 +9,35 @@ class Node:
         self.name = name
         self.colleagues_dict = {}
         self.number_of_edges = self.get_number_of_edges
+        self.visited = False
+
     
     def add_colleagus(self, colleague_list, movie):
         for i in colleague_list:
             if i.name != self.name:
                 self.colleagues_dict[i] = movie
-                #self.colleagues_dict[i.name] = movie.title
     
+
     def get_colleagus_name(self): 
         return_list = []   
         for key, val in self.colleagues_dict:
             return_list.append((key, val))
         return return_list
+
           
     def get_number_of_edges(self):
         return len(self.colleagues_dict)
 
+
     def get_edge(self, other):
         return self.colleagues_dict[other].title + " (" + self.colleagues_dict[other].rating + ")"
+
     
     def calculate_weight(self, other):
         return 10 - self.colleagues_dict[other].get_rating()
 
+    #setter '<' til True default slik at heapq skal kunne gjore sammenligninger ved heappush
+    #sporsmaal: kan dette gjores paa en bedre maate? Hva skal sammenlignes
     def __lt__(self, other):
         return True
 
@@ -44,28 +51,35 @@ class Movie:
         self.actors = []
         self.visited = set()
         
+
     def __str__(self):
         return self.title
+
 
     def add_actors(self, actor):
         self.actors.append(actor)
 
+
     def get_actors(self):
         return self.actors
+
 
     def add_edges(self):
         for i in self.actors:
             i.add_colleagus(self.actors, self)
 
+
     def get_rating(self):
         return float(self.rating)
+
 
 class Graph:
     def __init__(self):
         self.graph = {}            # node_object --> {node_object : movie_object}
         self.actor_dict = {}       # node_object name --> {node_object}
         self.movie_dict = {}       # movie_object tt_id --> {movie_object}   
-            
+        self.components_dict = {}  # 'component' int --> {node_object1, node_object2 ..}
+
     #Leser skuespiller-fil
     def read_actor_file(self, filename):
         lines = []
@@ -90,6 +104,7 @@ class Graph:
             self.graph[actor] = actor.colleagues_dict
             self.actor_dict[name] = actor
 
+
     #Leser film-fil
     def read_movie_file(self, filename):
         lines = []
@@ -107,7 +122,7 @@ class Graph:
             self.movie_dict[tt_id] = movie
 
     
-    def BFS(self, nm_id_start, nm_id_end):
+    def bfs(self, nm_id_start, nm_id_end):
         for key in self.graph.keys():
             if key.nm_id == nm_id_start:
                 start_node = key
@@ -139,44 +154,86 @@ class Graph:
         return
 
 
-    def dijkstra2(self, nm_id_start, nm_id_end):
+    def dijkstra(self, nm_id_start, nm_id_end):
         for key in self.graph.keys():
             if key.nm_id == nm_id_start:
                 start_node = key 
             if key.nm_id == nm_id_end:
                 end_node = key 
         
-        visited = {}
-        distance = {node: float('inf') for node in self.graph}
-        queue , seen = [(0, start_node)] 
-        distance[start_node] = 0 
+        queue , visited = [(0, start_node, [])] , set()
+        while queue:
+            cost, node , path = heappop(queue)
+            if node not in visited:
+                path = path + [node]
+                visited.add(node)
 
-        while queue and len(visited) < len(self.graph):
-            cost, node , path= heappop(queue)
-            for neighbour in self.graph[node]:  #Alle naboer til node i grafen
-                c = cost + node.calculate_weight(neighbour)
-                #print(distance[neighbour])      #cost / inf
-                if c < distance[neighbour]:
-                    distance[neighbour] = c
-                    heappush(queue, (c, neighbour))
+                for (next, c) in self.graph[node].items():
+                    heappush(queue, (cost + (node.calculate_weight(next)), next, path))
 
-        for node, val in distance.items():
-            print(node.name, " : ", val)
-                                 
+                if node == end_node:
+                    print(path[0].name)
+                    for i in range(len(path) - 1):
+                        print("====[ " + str(path[i].get_edge(path[i+1])) + " ] =====> " + str(path[i+1].name)) 
+                    print("Total weight: " + str(cost))
+                    return
+
+
+
+    def find_num_components(self, num):
+        counter = 0 
+        self._map_components()
+        for comp in self.components_dict.values():
+            if len(comp) == num:
+                counter += 1
+        print('There are ' + str(counter) + ' components of size ' + str(num))
+
+ 
+    def _map_components(self):
+        counter = 1
+        self.mark_nodes_status(False)
+
+        for node in self.graph:
+            if node.visited == False:
+                new_set = set()
+                new_set.add(node.name)
+                self.components_dict['component ' + str(counter)] = new_set
+                self._dfs(node, new_set)
+                counter += 1
+        
+
+    def _dfs(self, start_node, set):
+        start_node.visited = True
+        set.add(start_node.name)
+    
+        for neighbour in self.graph[start_node]:
+            if neighbour.visited == False:
+                self._dfs(neighbour, set)
+
+
+    def mark_nodes_status(self, boolean):
+        for node in self.graph:
+            node.visited = boolean
+    
                           
-    #Hjelpe-metode
     def test_print_movie(self):
         for key, val in self.movie_dict.items():
             print(key.name, " : ", val.get_actors())
 
-    #Printer ut grafen
+
     def print_pretty_graph(self):
         for key, val in self.actor_dict.items():
             print(key, " <---------> ", val)
 
+
     def print_graph(self):
         for key, val in self.graph.items():
             print(key.name, " <---------> ", val)
+
+    def print_components(self):
+        for key, val in self.components_dict.items():
+            print(key, " : ", val)
+
 
     def get_number_of_edges_total(self):
         list = []
@@ -184,8 +241,10 @@ class Graph:
             list.append(self.actor_dict[i].get_number_of_edges())
         return sum(list)
 
+
     def get_number_of_actors_total(self):
         return len(self.graph)
+
 
 
     def print_numbers(self):
@@ -198,24 +257,19 @@ class Graph:
 def main():
     g = Graph()
 
-    g.read_movie_file("marvel_movies.tsv")
-    g.read_actor_file("marvel_actors.tsv")
-    #g.read_movie_file("movies.tsv")
-    #g.read_actor_file("actors.tsv")
+    #g.read_movie_file("marvel_movies.tsv")
+    #g.read_actor_file("marvel_actors.tsv")
+    g.read_movie_file("movies.tsv")
+    g.read_actor_file("actors.tsv")
     #g.test_print_movie()
     #g.print_graph()
     #g.print_pretty_graph()
     #g.print_numbers()
-    print(g.BFS("nm0000313", "nm0000164"))
-    print(g.dijkstra2("nm0000313", "nm0000168"))
-
-    #try:
-                #path.insert(0, currentNode)
-                #currentNode = predecessor[currentNode]
-            #except KeyError:
-                #print("Path not reachable")
-                #break
-
+    #print(g.BFS("nm2255973", "nm0000460"))
+    #print(g.dijkstra2("nm2255973","nm0000460"))
+    g.find_num_components(10)
+    #g.print_components()
+    #print(g.components)
 
   
 main()
