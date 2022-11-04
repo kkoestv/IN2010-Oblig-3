@@ -1,6 +1,5 @@
-import heapq as heap
 from heapq import heappop, heappush
-from collections import defaultdict
+from collections import defaultdict, deque
 
 
 class Node:
@@ -36,8 +35,7 @@ class Node:
     def calculate_weight(self, other):
         return 10 - self.colleagues_dict[other].get_rating()
 
-    #setter '<' til True default slik at heapq skal kunne gjore sammenligninger ved heappush
-    #sporsmaal: kan dette gjores paa en bedre maate? Hva skal sammenlignes
+
     def __lt__(self, other):
         return True
 
@@ -78,7 +76,7 @@ class Graph:
         self.graph = {}            # node_object --> {node_object : movie_object}
         self.actor_dict = {}       # node_object name --> {node_object}
         self.movie_dict = {}       # movie_object tt_id --> {movie_object}   
-        self.components_dict = {}  # 'component' int --> {node_object1, node_object2 ..}
+        #self.components_dict = {}  # 'component' int --> {node_object1, node_object2 ..}
 
     #Leser skuespiller-fil
     def read_actor_file(self, filename):
@@ -122,6 +120,7 @@ class Graph:
             self.movie_dict[tt_id] = movie
 
     
+
     def bfs(self, nm_id_start, nm_id_end):
         for key in self.graph.keys():
             if key.nm_id == nm_id_start:
@@ -154,6 +153,7 @@ class Graph:
         return
 
 
+
     def dijkstra(self, nm_id_start, nm_id_end):
         for key in self.graph.keys():
             if key.nm_id == nm_id_start:
@@ -179,60 +179,38 @@ class Graph:
                     return
 
 
-
-    def find_num_components(self, num):
-        counter = 0 
-        self._map_components()
-        for comp in self.components_dict.values():
-            if len(comp) == num:
-                counter += 1
-        print('There are ' + str(counter) + ' components of size ' + str(num))
-
- 
-    def _map_components(self):
-        counter = 1
-        self.mark_nodes_status(False)
-
+    def map_components(self, num):
+        components_dict = {}  #Antall noder --> antall komponenter med node-antallet
+        visited = set()
         for node in self.graph:
-            if node.visited == False:
-                new_set = set()
-                new_set.add(node.name)
-                self.components_dict['component ' + str(counter)] = new_set
-                self._dfs(node, new_set)
+            num_nodes = self._bfs_visit(node, visited)
+            if components_dict.get(num_nodes) != None:
+                components_dict[num_nodes] += 1
+            else:
+                components_dict[num_nodes] = 1
+        if components_dict.get(num) != None:
+            print('There are ' + str(components_dict[num]) + ' of size ' + str(num))
+        else:
+            print('No components of that size')
+             
+
+    def _bfs_visit(self, node, visited):
+        queue = deque([node])
+        counter = 0
+
+        while queue:
+            n = queue.popleft()
+            if n not in visited:
                 counter += 1
-        
-
-    def _dfs(self, start_node, set):
-        start_node.visited = True
-        set.add(start_node.name)
-    
-        for neighbour in self.graph[start_node]:
-            if neighbour.visited == False:
-                self._dfs(neighbour, set)
-
-
-    def mark_nodes_status(self, boolean):
-        for node in self.graph:
-            node.visited = boolean
-    
-                          
-    def test_print_movie(self):
-        for key, val in self.movie_dict.items():
-            print(key.name, " : ", val.get_actors())
-
-
-    def print_pretty_graph(self):
-        for key, val in self.actor_dict.items():
-            print(key, " <---------> ", val)
+                visited.add(n)
+                for neighbour in self.graph[n]:
+                    queue.append(neighbour)
+        return counter
 
 
     def print_graph(self):
         for key, val in self.graph.items():
             print(key.name, " <---------> ", val)
-
-    def print_components(self):
-        for key, val in self.components_dict.items():
-            print(key, " : ", val)
 
 
     def get_number_of_edges_total(self):
@@ -252,7 +230,8 @@ class Graph:
         print("Number of nodes: " + str(self.get_number_of_actors_total()))
         print("Number of edges: " + str(self.get_number_of_edges_total()))
         print("--------------------------------------------------------------")
-                    
+
+
 
 def main():
     g = Graph()
@@ -267,10 +246,13 @@ def main():
     #g.print_numbers()
     #print(g.BFS("nm2255973", "nm0000460"))
     #print(g.dijkstra2("nm2255973","nm0000460"))
-    g.find_num_components(10)
-    #g.print_components()
+    #g.find_num_components(10)
     #print(g.components)
+    print(g.map_components(3))
+    
+    
 
   
 main()
+    
     
